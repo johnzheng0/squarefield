@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 //Window parameters
-#define TITLE   "Skware"
+#define TITLE   "Squarefield"
 #define POSY	500
 #define POSX	500
 #define WIDTH	1280
