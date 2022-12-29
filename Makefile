@@ -1,4 +1,4 @@
-PROG = main
+PROG = squarefield
 SRC = ${PROG}.c
 OBJ = ${SRC:.c=.o}
 
