@@ -6,7 +6,7 @@ BINDIR = /usr/bin
 
 CC = cc
 INCS = -l/usr/include/X11
-LIBS = -lX11
+LIBS = -lX11 -lm
 
 LDFLAGS = ${LIBS}
 CFLAGS = -Wall -Wextra ${INCS}

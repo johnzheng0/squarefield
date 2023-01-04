@@ -1,8 +1,14 @@
+/*
+Couldn't figure out how to get arrow key inputs to work without weird behavior
+Until then, the game uses mouse position to move the blue triangle
+*/
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/XKBlib.h>
 #include <X11/Xatom.h>
 
+#include <math.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +26,7 @@
 #define CUBECOUNT_INIT 20
 #define CUBECOUNT_INCREMENT 20
 #define INCREMENT_CYCLES 500
+#define PI 3.142857
 
 //X11 objects used by the program
 Display* dis;
@@ -30,14 +37,17 @@ XEvent ev;
 
 //Game paremeters initialized for the game program
 unsigned long black, white, red, green, blue;
-typedef struct {int x, y, wait;} gameCube; //individual cube
-struct {double x;} gameCoord; //game's absolute coordinates
+struct {double x, angle;} gameCoord; //game's absolute coordinates
+typedef struct {double x, y; int wait;} gameCube; //individual cube
 gameCube* gameCubes; //collection of individual cubes
 int gameCubeCount;
 int gameCubeCountInterval;
 int gameStage;
-unsigned long floorCol;
-XPoint* player;
+unsigned long floorColor;
+XPoint polygonPoint; //used in order to initialize or modify the XPoint array polygons
+XPoint* polygonPlayer;
+XPoint* polygonFloor;
+XPoint* polygonSquare;
 
 //Functions initialized to be used by the program
 void window_start();
@@ -52,15 +62,28 @@ int main() {
 	srand(time(NULL)); //ensure psuedorandomness
 	window_start(); //initialize window to be drawn on
 
-	//define player shape as triangle
-	player = malloc(3*sizeof(XPoint));
-	XPoint playerPoint;
-	playerPoint.x=WIDTH/2;playerPoint.y=HEIGHT*0.9;
-	player[0] = playerPoint;
-	playerPoint.x=WIDTH/2-20;playerPoint.y=HEIGHT*0.9+20;
-	player[1] = playerPoint;
-	playerPoint.x=WIDTH/2+20;playerPoint.y=HEIGHT*0.9+20;
-	player[2] = playerPoint;
+	//set polygonPlayer shape as triangle
+	polygonPlayer = malloc(3*sizeof(XPoint));
+	polygonPoint.x=WIDTH/2;polygonPoint.y=HEIGHT*0.9;
+	polygonPlayer[0] = polygonPoint;
+	polygonPoint.x=WIDTH/2-20;polygonPoint.y=HEIGHT*0.9+20;
+	polygonPlayer[1] = polygonPoint;
+	polygonPoint.x=WIDTH/2+20;polygonPoint.y=HEIGHT*0.9+20;
+	polygonPlayer[2] = polygonPoint;
+
+	//initialize floor shape
+	polygonFloor = malloc(4*sizeof(XPoint));
+	polygonPoint.x=0; polygonPoint.y=HEIGHT/5;
+	polygonFloor[0] = polygonPoint;
+	polygonPoint.x=WIDTH; polygonPoint.y=HEIGHT/5;
+	polygonFloor[1] = polygonPoint;
+	polygonPoint.x=WIDTH; polygonPoint.y=HEIGHT;
+	polygonFloor[2] = polygonPoint;
+	polygonPoint.x=0; polygonPoint.y=HEIGHT;
+	polygonFloor[3] = polygonPoint;
+
+	//define square shape to be 4 XPoints
+	polygonSquare = malloc(4*sizeof(XPoint));
 
 
 	//start main game loop
@@ -72,11 +95,11 @@ int main() {
 		gameCubeCount = CUBECOUNT_INIT;
 		gameCubes = (gameCube*)malloc(gameCubeCount*sizeof(gameCube));
 		gameCubeCountInterval = INCREMENT_CYCLES;
-		floorCol = rgb(128, 128, 128);
+		floorColor = rgb(128, 128, 128);
 		//add a variable amount of cubes to the cube array
 		for (int i=0; i<gameCubeCount; i++) {
 			gameCube cube;
-			cube.x = gameCoord.x+(rand()%80)-40;
+			cube.x = gameCoord.x+(rand()%20)-10;
 			cube.y = HEIGHT/8;
 			cube.wait = rand()%(150-gameCubeCount);
 			gameCubes[i] = cube;
@@ -102,11 +125,12 @@ int main() {
 				//define event actions for running game
 				switch (ev.type) {
 					case MotionNotify:
-						player[0].x = WIDTH/2+(ev.xbutton.x-WIDTH/2)*0.1;
+						gameCoord.angle = (ev.xbutton.x-WIDTH/2)*(PI/(4*WIDTH)); //changes the view angle depending on mouse position
 						break;
 					case KeyPress:
 						switch (XkbKeycodeToKeysym(dis, ev.xkey.keycode, 0, 0)) {
-							case XK_q: //quit the program
+							case XK_q: //cleanup and quit the program
+								window_close();
 								return 0;
 						}
 						break;
@@ -127,9 +151,13 @@ int main() {
 			XNextEvent(dis, &ev);
 			//define event actions for game over
 			switch (ev.type) {
+					case MotionNotify:
+						gameCoord.angle = (ev.xbutton.x-WIDTH/2)*(PI/(4*WIDTH)); //changes the view angle depending on mouse position
+						break;
 					case KeyPress:
 						switch (XkbKeycodeToKeysym(dis, ev.xkey.keycode, 0, 0)) {
-							case XK_q: //quit the program
+							case XK_q: //cleanup and quit the program
+								window_close();
 								return 0;
 							case XK_r: //restart the main game loop
 								free(gameCubes);
@@ -142,7 +170,7 @@ int main() {
 
 	//clean up elemeents before quiting
 	window_close();
-    return (0);
+    return 0;
 }
 
 //needed to sort and order the cube array
@@ -159,28 +187,56 @@ void run() {
 	
 	//clear graphics
 	XClearWindow(dis, win);
-	//draw floor
-	XSetForeground(dis, gc, floorCol);
-	XFillRectangle(dis, win, gc, 0, HEIGHT/5, WIDTH, HEIGHT);
-	//draw player
+
+	//draw floor depending on gameCoord angle attribute
+	polygonPoint.x=0, polygonPoint.y=WIDTH/5+sin(gameCoord.angle)*(WIDTH/2);
+	polygonFloor[0] = polygonPoint;
+	polygonPoint.x=WIDTH, polygonPoint.y=WIDTH/5-sin(gameCoord.angle)*(WIDTH/2);
+	polygonFloor[1] = polygonPoint;
+	XSetForeground(dis, gc, floorColor);
+	XFillPolygon(dis, win, gc, polygonFloor, 4, Convex, CoordModeOrigin);
+
+	//draw player triangle
 	XSetForeground(dis, gc, rgb(0, 0, 128));
-	XFillPolygon(dis, win, gc, player, 3, Convex, CoordModeOrigin);
+	XFillPolygon(dis, win, gc, polygonPlayer, 3, Convex, CoordModeOrigin);
 
 	
-	//order the array of cubes so they draw on top of each other
+	//order the array of cubes so they draw on top of each other in order
 	qsort(gameCubes, gameCubeCount, sizeof(gameCube), comp);
 	//iterate through each cube in the field
 	for (int i=0; i<gameCubeCount; i++) {
-		//move cube and draw it depending on distance and relative location to player
+		//once wait cooldown is done
 		if (gameCubes[i].wait < 0) {
+			//move cube down towards player
 			gameCubes[i].y *= 1.05;
+
+			//set color of cube depending on distance from player
 			double r = 2*(double)gameCubes[i].y/HEIGHT;
 			if (r>1) {r=1;}
 			XSetForeground(dis, gc, rgb((double)255*r, 128-(double)255*(r/2), 0));
-			XFillRectangle(dis, win, gc, gameCubes[i].x+gameCubes[i].y*(gameCubes[i].x-gameCoord.x)*0.2 , gameCubes[i].y, gameCubes[i].y/2, gameCubes[i].y/2);
+
+			//real coordinates and information of cube
+			double tempSize = gameCubes[i].y/2;
+			double tempRealX = gameCubes[i].x + gameCubes[i].y*(gameCubes[i].x-gameCoord.x)*0.2;
+			double tempRealY = gameCubes[i].y + HEIGHT/4;
+
+			//sets the cube's shape, location, and angle that will appear on the window
+			polygonPoint.x=(tempRealX-tempSize/2)*cos(gameCoord.angle); polygonPoint.y=tempRealY+(tempSize/2)*sin(gameCoord.angle)-(tempRealX-WIDTH/2)*sin(gameCoord.angle);
+			polygonSquare[0] = polygonPoint;
+			polygonPoint.x=tempSize*cos(gameCoord.angle); polygonPoint.y=-tempSize*sin(gameCoord.angle);
+			polygonSquare[1] = polygonPoint;
+			polygonPoint.x=tempSize*cos(PI/2+gameCoord.angle); polygonPoint.y=-tempSize*sin(PI/2+gameCoord.angle);
+			polygonSquare[2] = polygonPoint;
+			polygonPoint.x=tempSize*cos(PI+gameCoord.angle); polygonPoint.y=-tempSize*sin(PI+gameCoord.angle);
+			polygonSquare[3] = polygonPoint;
+
+			//draws the fake square on the window
+			XFillPolygon(dis, win, gc, polygonSquare, 4, Convex, CoordModePrevious);
+
 			//square is now close to player, check if lost or reset and randomize square
 			if (gameCubes[i].y > HEIGHT*0.6) {
-				if (fabs((double)gameCubes[i].x-gameCoord.x+1.2) < 1.4) {
+				if (fabs(gameCubes[i].x-gameCoord.x) < 1.5) {
+					XSetForeground(dis, gc, white);
 					char msgFail[] = "GAME OVER";
 					XDrawString(dis, win, gc, 10, 15, msgFail, strlen(msgFail));
 					char msgQuit[] = "q - quit";
@@ -189,22 +245,24 @@ void run() {
 					XDrawString(dis, win, gc, 10, 35, msgReplay, strlen(msgReplay));
 					gameStage = 2;
 				} else {
+					//randomize cube and reset for rerun
 					gameCubes[i].x = gameCoord.x+(rand()%80)-40;
 					gameCubes[i].y = HEIGHT/8;
 					gameCubes[i].wait = rand()%(150-gameCubeCount);
 				}
 			}
 		} else {
-			//progress cube wait cycles
+			//progress the cube's wait cycle
 			gameCubes[i].wait--;
 		}
 	}
 
 	//handles difficulty increase and stage advancement with a cycle countdown and increasing cube amount in field
 	if (gameCubeCount < 100 && gameCubeCountInterval-- < 0) {
-		floorCol = rgb(rand()%255, rand()%255, rand()%255);
+		//the floor changes to random color
+		floorColor = rgb(rand()%255, rand()%255, rand()%255);
 		free(gameCubes);
-		gameCubeCount += 20;
+		gameCubeCount += CUBECOUNT_INCREMENT;
 		gameCubes = (gameCube*)malloc(gameCubeCount*sizeof(gameCube));
 		for (int i=0; i<gameCubeCount; i++) {
 			gameCube cube;
@@ -256,11 +314,14 @@ void window_start() {
 }
 //handles closing the window and freeing memory
 void window_close() {
-	free(gameCubes);
 	XFreeGC(dis, gc);
 	XUnmapWindow(dis, win);
 	XDestroyWindow(dis, win);
 	XCloseDisplay(dis);
+	free(gameCubes);
+	free(polygonPlayer);
+	free(polygonFloor);
+	free(polygonSquare);
 }
 
 //spits out color that X11 needs
