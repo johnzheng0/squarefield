@@ -21,25 +21,25 @@
 #define CUBECOUNT_INCREMENT 20
 #define INCREMENT_CYCLES 500
 
-//X11 variables
+//X11 objects used by the program
 Display* dis;
 int scr;
 Window win;
 GC gc;
 XEvent ev;
 
-//Game Variables
+//Game paremeters initialized for the game program
 unsigned long black, white, red, green, blue;
-typedef struct {int x, y, wait;} gameCube;
-struct {double x;} gameCoord;
-gameCube* gameCubes;
+typedef struct {int x, y, wait;} gameCube; //individual cube
+struct {double x;} gameCoord; //game's absolute coordinates
+gameCube* gameCubes; //collection of individual cubes
 int gameCubeCount;
 int gameCubeCountInterval;
 int gameStage;
 unsigned long floorCol;
 XPoint* player;
 
-//Game Functions
+//Functions initialized to be used by the program
 void window_start();
 void window_close();
 unsigned long rgb(int r, int g, int b);
@@ -52,6 +52,7 @@ int main() {
 	srand(time(NULL)); //ensure psuedorandomness
 	window_start(); //initialize window to be drawn on
 
+	//define player shape as triangle
 	player = malloc(3*sizeof(XPoint));
 	XPoint playerPoint;
 	playerPoint.x=WIDTH/2;playerPoint.y=HEIGHT*0.9;
@@ -150,6 +151,7 @@ int comp(gameCube* a, gameCube* b) {
 }
 //one cycle run of the actual game
 void run() {
+	//update the absolute coordinates based on cursor position
 	double move = (double)(ev.xbutton.x - WIDTH/2)/(WIDTH/4);
 	if (move < -0.5) {move = -0.5;}
 	if (move > 0.5) {move = 0.5;}
