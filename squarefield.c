@@ -22,7 +22,7 @@ Until then, the game uses mouse position to move the blue triangle
 #define BORDER	15
 
 //Game Parameters
-#define CYCLE_USEC	40000
+#define CYCLE_USEC	33333
 #define CUBECOUNT_INIT 20
 #define CUBECOUNT_INCREMENT 20
 #define INCREMENT_CYCLES 500
@@ -43,6 +43,7 @@ gameCube* gameCubes; //collection of individual cubes
 int gameCubeCount;
 int gameCubeCountInterval;
 int gameStage;
+int gameScore;
 unsigned long floorColor;
 XPoint polygonPoint; //used in order to initialize or modify the XPoint array polygons
 XPoint* polygonPlayer;
@@ -91,6 +92,7 @@ int main() {
 
 		//initialize or reinitialize game parameters
 		gameStage = 1;
+		gameScore = 0;
 		gameCoord.x=WIDTH/2;
 		gameCubeCount = CUBECOUNT_INIT;
 		gameCubes = (gameCube*)malloc(gameCubeCount*sizeof(gameCube));
@@ -99,7 +101,7 @@ int main() {
 		//add a variable amount of cubes to the cube array
 		for (int i=0; i<gameCubeCount; i++) {
 			gameCube cube;
-			cube.x = gameCoord.x+(rand()%20)-10;
+			cube.x = gameCoord.x+(rand()%80)-40;
 			cube.y = HEIGHT/8;
 			cube.wait = rand()%(150-gameCubeCount);
 			gameCubes[i] = cube;
@@ -200,6 +202,12 @@ void run() {
 	XSetForeground(dis, gc, rgb(0, 0, 128));
 	XFillPolygon(dis, win, gc, polygonPlayer, 3, Convex, CoordModeOrigin);
 
+	//draw score on upper left corner
+	XSetForeground(dis, gc, white);
+	char msgScore[16];
+	sprintf(msgScore, "Score: %d", gameScore++);
+	XDrawString(dis, win, gc, 10, 20, msgScore, strlen(msgScore));
+
 	
 	//order the array of cubes so they draw on top of each other in order
 	qsort(gameCubes, gameCubeCount, sizeof(gameCube), comp);
@@ -234,15 +242,15 @@ void run() {
 			XFillPolygon(dis, win, gc, polygonSquare, 4, Convex, CoordModePrevious);
 
 			//square is now close to player, check if lost or reset and randomize square
-			if (gameCubes[i].y > HEIGHT*0.6) {
-				if (fabs(gameCubes[i].x-gameCoord.x) < 1.5) {
+			if (gameCubes[i].y > HEIGHT*0.65) {
+				if (fabs(gameCubes[i].x-gameCoord.x) < 1.4) {
 					XSetForeground(dis, gc, white);
 					char msgFail[] = "GAME OVER";
-					XDrawString(dis, win, gc, 10, 15, msgFail, strlen(msgFail));
-					char msgQuit[] = "q - quit";
-					XDrawString(dis, win, gc, 10, 25, msgQuit, strlen(msgQuit));
-					char msgReplay[] = "r - replay";
-					XDrawString(dis, win, gc, 10, 35, msgReplay, strlen(msgReplay));
+					XDrawString(dis, win, gc, 10, 40, msgFail, strlen(msgFail));
+					char msgReplay[] = "press r - replay";
+					XDrawString(dis, win, gc, 10, 50, msgReplay, strlen(msgReplay));
+					char msgQuit[] = "press q - quit";
+					XDrawString(dis, win, gc, 10, 60, msgQuit, strlen(msgQuit));
 					gameStage = 2;
 				} else {
 					//randomize cube and reset for rerun
@@ -289,9 +297,6 @@ void window_start() {
 	//shorthand for colors
 	black = BlackPixel(dis, scr);
 	white = WhitePixel(dis, scr);
-	red = rgb(255, 0, 0);
-	green = rgb(0, 255, 0);
-	blue = rgb(0, 0, 255);
 
 	//create window and event handlers
     win = XCreateSimpleWindow(dis, DefaultRootWindow(dis), POSX, POSY, WIDTH, HEIGHT, BORDER, white, black);
