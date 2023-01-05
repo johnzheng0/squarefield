@@ -22,10 +22,11 @@ Until then, the game uses mouse position to move the blue triangle
 #define BORDER	15
 
 //Game Parameters
-#define CYCLE_USEC	33333
-#define CUBECOUNT_INIT 20
-#define CUBECOUNT_INCREMENT 20
-#define INCREMENT_CYCLES 500
+#define CYCLE_USEC			33333
+#define CUBECOUNT_INIT 		20
+#define CUBESPREAD			40
+#define CUBECOUNT_INCREMENT	20
+#define INCREMENT_CYCLES 	500
 #define PI 3.142857
 
 //X11 objects used by the program
@@ -34,6 +35,8 @@ int scr;
 Window win;
 GC gc;
 XEvent ev;
+int width;
+int height;
 
 //Game paremeters initialized for the game program
 unsigned long black, white, red, green, blue;
@@ -65,27 +68,26 @@ int main() {
 
 	//set polygonPlayer shape as triangle
 	polygonPlayer = malloc(3*sizeof(XPoint));
-	polygonPoint.x=WIDTH/2;polygonPoint.y=HEIGHT*0.9;
+	polygonPoint.x=width/2;polygonPoint.y=height*0.9;
 	polygonPlayer[0] = polygonPoint;
-	polygonPoint.x=WIDTH/2-20;polygonPoint.y=HEIGHT*0.9+20;
+	polygonPoint.x=width/2-20;polygonPoint.y=height*0.9+20;
 	polygonPlayer[1] = polygonPoint;
-	polygonPoint.x=WIDTH/2+20;polygonPoint.y=HEIGHT*0.9+20;
+	polygonPoint.x=width/2+20;polygonPoint.y=height*0.9+20;
 	polygonPlayer[2] = polygonPoint;
 
 	//initialize floor shape
 	polygonFloor = malloc(4*sizeof(XPoint));
-	polygonPoint.x=0; polygonPoint.y=HEIGHT/5;
+	polygonPoint.x=0; polygonPoint.y=height/5;
 	polygonFloor[0] = polygonPoint;
-	polygonPoint.x=WIDTH; polygonPoint.y=HEIGHT/5;
+	polygonPoint.x=width; polygonPoint.y=height/5;
 	polygonFloor[1] = polygonPoint;
-	polygonPoint.x=WIDTH; polygonPoint.y=HEIGHT;
+	polygonPoint.x=width; polygonPoint.y=height;
 	polygonFloor[2] = polygonPoint;
-	polygonPoint.x=0; polygonPoint.y=HEIGHT;
+	polygonPoint.x=0; polygonPoint.y=height;
 	polygonFloor[3] = polygonPoint;
 
 	//define square shape to be 4 XPoints
 	polygonSquare = malloc(4*sizeof(XPoint));
-
 
 	//start main game loop
 	while (1) {
@@ -93,7 +95,7 @@ int main() {
 		//initialize or reinitialize game parameters
 		gameStage = 1;
 		gameScore = 0;
-		gameCoord.x=WIDTH/2;
+		gameCoord.x = 0;
 		gameCubeCount = CUBECOUNT_INIT;
 		gameCubes = (gameCube*)malloc(gameCubeCount*sizeof(gameCube));
 		gameCubeCountInterval = INCREMENT_CYCLES;
@@ -101,8 +103,8 @@ int main() {
 		//add a variable amount of cubes to the cube array
 		for (int i=0; i<gameCubeCount; i++) {
 			gameCube cube;
-			cube.x = gameCoord.x+(rand()%80)-40;
-			cube.y = HEIGHT/8;
+			cube.x = gameCoord.x+(rand()%(CUBESPREAD*2))-CUBESPREAD;
+			cube.y = height/8;
 			cube.wait = rand()%(150-gameCubeCount);
 			gameCubes[i] = cube;
 		}
@@ -127,13 +129,19 @@ int main() {
 				//define event actions for running game
 				switch (ev.type) {
 					case MotionNotify:
-						gameCoord.angle = (ev.xbutton.x-WIDTH/2)*(PI/(4*WIDTH)); //changes the view angle depending on mouse position
+						gameCoord.angle = (ev.xbutton.x-width/2)*(PI/(4*width)); //changes the view angle depending on mouse position
 						break;
 					case KeyPress:
 						switch (XkbKeycodeToKeysym(dis, ev.xkey.keycode, 0, 0)) {
 							case XK_q: //cleanup and quit the program
 								window_close();
 								return 0;
+							case XK_Left:
+								gameCoord.x -= width/4;
+								break;
+							case XK_Right:
+								gameCoord.x += width/4;
+								break;
 						}
 						break;
 				}
@@ -154,7 +162,7 @@ int main() {
 			//define event actions for game over
 			switch (ev.type) {
 					case MotionNotify:
-						gameCoord.angle = (ev.xbutton.x-WIDTH/2)*(PI/(4*WIDTH)); //changes the view angle depending on mouse position
+						gameCoord.angle = (ev.xbutton.x-width/2)*(PI/(4*width)); //changes the view angle depending on mouse position
 						break;
 					case KeyPress:
 						switch (XkbKeycodeToKeysym(dis, ev.xkey.keycode, 0, 0)) {
@@ -182,7 +190,7 @@ int comp(gameCube* a, gameCube* b) {
 //one cycle run of the actual game
 void run() {
 	//update the absolute coordinates based on cursor position
-	double move = (double)(ev.xbutton.x - WIDTH/2)/(WIDTH/4);
+	double move = (double)(ev.xbutton.x - width/2)/(width/4);
 	if (move < -0.5) {move = -0.5;}
 	if (move > 0.5) {move = 0.5;}
 	gameCoord.x += move;
@@ -191,9 +199,9 @@ void run() {
 	XClearWindow(dis, win);
 
 	//draw floor depending on gameCoord angle attribute
-	polygonPoint.x=0, polygonPoint.y=WIDTH/5+sin(gameCoord.angle)*(WIDTH/2);
+	polygonPoint.x=0, polygonPoint.y=width/5+sin(gameCoord.angle)*(width/2);
 	polygonFloor[0] = polygonPoint;
-	polygonPoint.x=WIDTH, polygonPoint.y=WIDTH/5-sin(gameCoord.angle)*(WIDTH/2);
+	polygonPoint.x=width, polygonPoint.y=width/5-sin(gameCoord.angle)*(width/2);
 	polygonFloor[1] = polygonPoint;
 	XSetForeground(dis, gc, floorColor);
 	XFillPolygon(dis, win, gc, polygonFloor, 4, Convex, CoordModeOrigin);
@@ -207,7 +215,6 @@ void run() {
 	char msgScore[16];
 	sprintf(msgScore, "Score: %d", gameScore++);
 	XDrawString(dis, win, gc, 10, 20, msgScore, strlen(msgScore));
-
 	
 	//order the array of cubes so they draw on top of each other in order
 	qsort(gameCubes, gameCubeCount, sizeof(gameCube), comp);
@@ -219,17 +226,17 @@ void run() {
 			gameCubes[i].y *= 1.05;
 
 			//set color of cube depending on distance from player
-			double r = 2*(double)gameCubes[i].y/HEIGHT;
+			double r = 2*gameCubes[i].y/height;
 			if (r>1) {r=1;}
-			XSetForeground(dis, gc, rgb((double)255*r, 128-(double)255*(r/2), 0));
+			XSetForeground(dis, gc, rgb(255*r, 128-255*(r/2), 0));
 
 			//real coordinates and information of cube
 			double tempSize = gameCubes[i].y/2;
-			double tempRealX = gameCubes[i].x + gameCubes[i].y*(gameCubes[i].x-gameCoord.x)*0.2;
-			double tempRealY = gameCubes[i].y + HEIGHT/4;
+			double tempRealX = width/2 + (gameCubes[i].x-gameCoord.x) + gameCubes[i].y*(gameCubes[i].x-gameCoord.x)*0.2;
+			double tempRealY = gameCubes[i].y + height/4;
 
 			//sets the cube's shape, location, and angle that will appear on the window
-			polygonPoint.x=(tempRealX-tempSize/2)*cos(gameCoord.angle); polygonPoint.y=tempRealY+(tempSize/2)*sin(gameCoord.angle)-(tempRealX-WIDTH/2)*sin(gameCoord.angle);
+			polygonPoint.x=(tempRealX-tempSize/2)*cos(gameCoord.angle); polygonPoint.y=tempRealY+(tempSize/2)*sin(gameCoord.angle)-(tempRealX-width/2)*sin(gameCoord.angle);
 			polygonSquare[0] = polygonPoint;
 			polygonPoint.x=tempSize*cos(gameCoord.angle); polygonPoint.y=-tempSize*sin(gameCoord.angle);
 			polygonSquare[1] = polygonPoint;
@@ -242,7 +249,7 @@ void run() {
 			XFillPolygon(dis, win, gc, polygonSquare, 4, Convex, CoordModePrevious);
 
 			//square is now close to player, check if lost or reset and randomize square
-			if (gameCubes[i].y > HEIGHT*0.65) {
+			if (gameCubes[i].y > height*0.65) {
 				if (fabs(gameCubes[i].x-gameCoord.x) < 1.4) {
 					XSetForeground(dis, gc, white);
 					char msgFail[] = "GAME OVER";
@@ -255,7 +262,7 @@ void run() {
 				} else {
 					//randomize cube and reset for rerun
 					gameCubes[i].x = gameCoord.x+(rand()%80)-40;
-					gameCubes[i].y = HEIGHT/8;
+					gameCubes[i].y = height/8;
 					gameCubes[i].wait = rand()%(150-gameCubeCount);
 				}
 			}
@@ -274,8 +281,8 @@ void run() {
 		gameCubes = (gameCube*)malloc(gameCubeCount*sizeof(gameCube));
 		for (int i=0; i<gameCubeCount; i++) {
 			gameCube cube;
-			cube.x = gameCoord.x+(rand()%80)-40;
-			cube.y = HEIGHT/8;
+			cube.x = gameCoord.x+(rand()%(CUBESPREAD*2))-CUBESPREAD;
+			cube.y = height/8;
 			cube.wait = rand()%(150-gameCubeCount);
 			gameCubes[i] = cube;
 		}
@@ -293,13 +300,15 @@ void window_start() {
 	}
 	scr = DefaultScreen(dis);
 	win = RootWindow(dis, scr);
+	width = DisplayWidth(dis, scr);
+	height = DisplayHeight(dis, scr);
 
 	//shorthand for colors
 	black = BlackPixel(dis, scr);
 	white = WhitePixel(dis, scr);
 
 	//create window and event handlers
-    win = XCreateSimpleWindow(dis, DefaultRootWindow(dis), POSX, POSY, WIDTH, HEIGHT, BORDER, white, black);
+    win = XCreateSimpleWindow(dis, DefaultRootWindow(dis), POSX, POSY, width, height, BORDER, white, black);
 	XSetStandardProperties(dis, win, TITLE, TITLE, None, NULL, 0, NULL);
 	XSelectInput(dis, win, KeyPressMask | PointerMotionMask);
 
@@ -309,7 +318,7 @@ void window_start() {
 	XSetForeground(dis, gc, white);
 
 	//make windows floating on DWM
-	XSizeHints xsh = {.min_width=WIDTH, .min_height=HEIGHT, .max_width=WIDTH, .max_height=HEIGHT};
+	XSizeHints xsh = {.min_width=width, .min_height=height, .max_width=width, .max_height=height};
 	xsh.flags = PMinSize | PMaxSize;
 	XSetSizeHints(dis, win, &xsh, XA_WM_NORMAL_HINTS);
 
