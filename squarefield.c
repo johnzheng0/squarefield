@@ -319,6 +319,7 @@ void window_start() {
 	//map window to display
 	XMapWindow(dis, win);
 	XMapRaised(dis, win);
+	XMoveResizeWindow(dis, win, 0, 0, width, height);
 }
 //handles closing the window and freeing memory
 void window_close() {
