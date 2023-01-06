@@ -104,7 +104,7 @@ int main() {
 		for (int i=0; i<gameCubeCount; i++) {
 			gameCube cube;
 			cube.x = gameCoord.x+(rand()%(CUBESPREAD*2))-CUBESPREAD;
-			cube.y = height/8;
+			cube.y = height/16;
 			cube.wait = rand()%(150-gameCubeCount);
 			gameCubes[i] = cube;
 		}
@@ -136,12 +136,6 @@ int main() {
 							case XK_q: //cleanup and quit the program
 								window_close();
 								return 0;
-							case XK_Left:
-								gameCoord.x -= width/4;
-								break;
-							case XK_Right:
-								gameCoord.x += width/4;
-								break;
 						}
 						break;
 				}
@@ -199,9 +193,9 @@ void run() {
 	XClearWindow(dis, win);
 
 	//draw floor depending on gameCoord angle attribute
-	polygonPoint.x=0, polygonPoint.y=width/5+sin(gameCoord.angle)*(width/2);
+	polygonPoint.x=0, polygonPoint.y=height/4+sin(gameCoord.angle)*(width/2);
 	polygonFloor[0] = polygonPoint;
-	polygonPoint.x=width, polygonPoint.y=width/5-sin(gameCoord.angle)*(width/2);
+	polygonPoint.x=width, polygonPoint.y=height/4-sin(gameCoord.angle)*(width/2);
 	polygonFloor[1] = polygonPoint;
 	XSetForeground(dis, gc, floorColor);
 	XFillPolygon(dis, win, gc, polygonFloor, 4, Convex, CoordModeOrigin);
@@ -226,9 +220,9 @@ void run() {
 			gameCubes[i].y *= 1.05;
 
 			//set color of cube depending on distance from player
-			double r = 2*gameCubes[i].y/height;
-			if (r>1) {r=1;}
-			XSetForeground(dis, gc, rgb(255*r, 128-255*(r/2), 0));
+			double colorRatio = (gameCubes[i].y-height/16)/(height*0.4);
+			colorRatio = colorRatio>1 ? 1 : colorRatio;
+			XSetForeground(dis, gc, rgb(128+64*colorRatio, 128-128*colorRatio, 0));
 
 			//real coordinates and information of cube
 			double tempSize = gameCubes[i].y/2;
@@ -262,7 +256,7 @@ void run() {
 				} else {
 					//randomize cube and reset for rerun
 					gameCubes[i].x = gameCoord.x+(rand()%80)-40;
-					gameCubes[i].y = height/8;
+					gameCubes[i].y = height/16;
 					gameCubes[i].wait = rand()%(150-gameCubeCount);
 				}
 			}
