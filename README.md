@@ -1,5 +1,6 @@
 # Squarefield
-I make knockoff cubefield with C and Xlib.
+![](https://raw.githubusercontent.com/johnzheng0/squarefield/main/preview.png)
+I made knockoff cubefield with C and Xlib.
 
 ## Compile
 Requires X11 headers<br><br>
